@@ -1,27 +1,49 @@
-def read_file_to_dict(filename):
-    diccionario = {}
-    try:
-        with (open(filename, "r")) as file:
-            line = file.readline().strip() #lee la linea del archivo
-            prod_y_valor = line.split(";") #separa a los productos y valores
-            for element in prod_y_valor:
-                if ":" in element: #sólo avanza si el elemento existe, para evitar el errror provocado por el último ";"
-                    producto, valor = element.split(":") #separa a cada elemento en producto y valor
-                    valor = float(valor) #convierte el valor en un float
-                    if producto not in diccionario:
-                        diccionario[producto] = [valor] #crea el item en el diccionario
-                    else:
-                        diccionario[producto].append(valor) #agrega el valor a la lista de valor del item
-    except FileNotFoundError: #por si el archivo no existe
-        print ("Archivo no encontrado")
-        raise
-    return diccionario #lo devuelve vacío si no existe y si no, la respuesta correcta
+import unittest
+from files_and_exceptions import read_file_to_dict, process_dict
+import os
 
-def process_dict(data):
-    for key, value in data.items():
-        ventas_totales = 0 #actualiza el valor de ventas totales
-        for element in value:
-            ventas_totales += element #suma los valores de value, también se puede hacer con la función sum()
-        promedio = ventas_totales/len(value) #saca el promedio de cada value
-        print (f"{key}: ventas totales ${ventas_totales:.2f}, promedio ${promedio:.2f}") #imprime lo que tiene que imprimir según lo pedido, el .2f es para que se agreguen dos decimales al string
-    return None #no retorna nada, porque el ejercicio no lo pide
+class FilesAndExceptionsTest(unittest.TestCase):
+    def setUp(self):
+        # Creo un archivo temporal para las pruebas
+        with open('test_datos.txt', 'w') as f:
+            f.write('producto1:100;producto2:200;producto1:150;producto3:50;producto2:100;')
+
+    def tearDown(self):
+        # Elimino el archivo temporal
+        if os.path.exists('test_datos.txt'):
+            os.remove('test_datos.txt')
+
+    def test_read_file_to_dict(self):
+        result = read_file_to_dict('test_datos.txt')
+        self.assertEqual(result, {
+            'producto1': [100.0, 150.0],
+            'producto2': [200.0, 100.0],
+            'producto3': [50.0]
+        })
+
+    def test_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            read_file_to_dict('no_existe.txt')
+
+    def test_process_dict_prints_totales_y_promedio(self):
+        # Capturo la salida de process_dict
+        import io
+        import sys
+        data = {
+            'producto1': [100.0, 150.0],
+            'producto2': [200.0, 100.0],
+            'producto3': [50.0]
+        }
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        process_dict(data)
+        sys.stdout = sys.__stdout__
+        output = captured_output.getvalue()
+        # Verifica el formato y el orden natural
+        lines = output.strip().split('\n')
+        self.assertEqual(lines[0], 'producto1: ventas totales $250.00, promedio $125.00')
+        self.assertEqual(lines[1], 'producto2: ventas totales $300.00, promedio $150.00')
+        self.assertEqual(lines[2], 'producto3: ventas totales $50.00, promedio $50.00')
+
+if __name__ == "__main__":
+    unittest.main() 
